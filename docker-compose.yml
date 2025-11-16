@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   postgres:
     image: postgres:15
@@ -9,7 +7,7 @@ services:
       POSTGRES_USER: bookomol
       POSTGRES_PASSWORD: localpass
     ports:
-      - "5432:5432"
+      - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
@@ -22,7 +20,7 @@ services:
     image: redis:7
     container_name: bookomol-redis
     ports:
-      - "6379:6379"
+      - "6380:6379"
     volumes:
       - redis_data:/data
     healthcheck:
@@ -52,16 +50,23 @@ services:
   pubsub-emulator:
     image: gcr.io/google.com/cloudsdktool/cloud-sdk:latest
     container_name: bookomol-pubsub
-    command: gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
     ports:
       - "8085:8085"
     environment:
-      - PUBSUB_EMULATOR_HOST=localhost:8085
+      - PUBSUB_EMULATOR_HOST=0.0.0.0:8085
+      - PUBSUB_PROJECT_ID=bookomol-project
+    command: >
+      sh -c "
+        apt-get update &&
+        apt-get install -y google-cloud-cli-pubsub-emulator &&
+        gcloud beta emulators pubsub start --host-port=0.0.0.0:8085
+      "
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8085"]
+      test: ["CMD-SHELL", "curl -f http://localhost:8085 || nc -z localhost 8085"]
       interval: 30s
       timeout: 10s
-      retries: 5
+      retries: 12
+      start_period: 120s
 
 volumes:
   postgres_data:

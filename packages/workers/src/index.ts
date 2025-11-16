@@ -35,9 +35,5 @@ process.on('SIGTERM', async () => {
 
 // Start all workers for development
 if (process.env.NODE_ENV === 'development') {
-  Promise.all([
-    startMainWorker(),
-    startChapterWorker(), 
-    startPreviewWorker()
-  ]).catch(console.error);
+  Promise.all([startMainWorker(), startChapterWorker(), startPreviewWorker()]).catch(console.error);
 }
