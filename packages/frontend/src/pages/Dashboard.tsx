@@ -9,6 +9,7 @@ import {
   Button,
   Alert,
   CircularProgress,
+  LinearProgress,
 } from '@mui/material';
 import {
   LibraryBooks,
@@ -16,7 +17,9 @@ import {
   TrendingUp,
   Schedule,
 } from '@mui/icons-material';
+import { useQuery } from '@tanstack/react-query';
 import { useHealthCheck, useBooks } from '../services/api';
+import { apiService } from '../services/api';
 
 interface StatsCardProps {
   title: string;
@@ -46,10 +49,19 @@ const StatsCard: React.FC<StatsCardProps> = ({ title, value, icon, color = 'prim
 export const Dashboard: React.FC = () => {
   const { data: healthData, isLoading: healthLoading, error: healthError } = useHealthCheck();
   const { data: books, isLoading: booksLoading, error: booksError } = useBooks();
+  
+  // Get user usage statistics
+  const { data: usage, isLoading: usageLoading } = useQuery({
+    queryKey: ['user', 'usage'],
+    queryFn: () => apiService.getUserUsage(),
+    retry: 1,
+  });
 
-  const totalBooks = books?.length || 0;
-  const processingBooks = books?.filter(book => book.status === 'processing').length || 0;
-  const completedBooks = books?.filter(book => book.status === 'completed').length || 0;
+  const totalBooks = usage?.books.total || 0;
+  const processingBooks = usage?.books.processing || 0;
+  const completedBooks = usage?.books.completed || 0;
+  const dailyUsed = usage?.dailyQuota.used || 0;
+  const dailyLimit = usage?.dailyQuota.limit || 3;
 
   return (
     <Box>
@@ -93,7 +105,7 @@ export const Dashboard: React.FC = () => {
         <Grid item xs={12} sm={6} md={3}>
           <StatsCard
             title="Upload Today"
-            value="0/3"
+            value={usageLoading ? '...' : `${dailyUsed}/${dailyLimit}`}
             icon={<Upload />}
             color="secondary"
           />
@@ -116,6 +128,43 @@ export const Dashboard: React.FC = () => {
         </Grid>
       </Grid>
 
+      {/* Daily Quota Progress */}
+      {usage && (
+        <Card sx={{ mb: 4 }}>
+          <CardContent>
+            <Typography variant="h6" component="h2" gutterBottom>
+              Daily Upload Quota
+            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+              <Typography variant="body2" color="textSecondary" sx={{ flexGrow: 1 }}>
+                {dailyUsed} of {dailyLimit} books uploaded today
+              </Typography>
+              <Typography variant="body2" color="textSecondary">
+                {dailyLimit - dailyUsed} remaining
+              </Typography>
+            </Box>
+            <LinearProgress
+              variant="determinate"
+              value={(dailyUsed / dailyLimit) * 100}
+              sx={{
+                height: 8,
+                borderRadius: 4,
+                backgroundColor: 'grey.200',
+                '& .MuiLinearProgress-bar': {
+                  borderRadius: 4,
+                  backgroundColor: dailyUsed >= dailyLimit ? 'error.main' : 'primary.main'
+                }
+              }}
+            />
+            {usage.dailyQuota.resetAt && (
+              <Typography variant="caption" color="textSecondary" sx={{ mt: 1, display: 'block' }}>
+                Quota resets daily at midnight
+              </Typography>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Quick Actions */}
       <Card>
         <CardContent>
@@ -133,8 +182,12 @@ export const Dashboard: React.FC = () => {
           )}
           
           <CardActions>
-            <Button variant="contained" startIcon={<Upload />}>
-              Upload Your First Book
+            <Button
+              variant="contained"
+              startIcon={<Upload />}
+              disabled={dailyUsed >= dailyLimit}
+            >
+              {totalBooks === 0 ? 'Upload Your First Book' : 'Upload Another Book'}
             </Button>
             <Button variant="outlined">
               View Tutorial

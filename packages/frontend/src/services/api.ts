@@ -6,13 +6,18 @@ const API_BASE_URL = 'http://localhost:3010';
 // Types
 export interface Book {
   id: string;
-  title: string;
-  author?: string;
-  fileName: string;
-  fileSize: number;
+  title: string | null;
+  originalFilename: string | null;
+  originalPages: number | null;
+  condensedPages: number | null;
+  condensingLevel: 'light' | 'medium' | 'heavy' | null;
+  compressionRatio: number | null;
   status: 'uploaded' | 'processing' | 'completed' | 'failed';
+  processingProgress: number;
+  errorMessage: string | null;
+  apiCost: number;
   createdAt: string;
-  completedAt?: string;
+  updatedAt: string;
 }
 
 export interface User {
@@ -52,7 +57,7 @@ class ApiService {
   }
 
   // Books endpoints
-  async getBooks(): Promise<Book[]> {
+  async getBooks(): Promise<{ books: Book[] }> {
     return this.fetchWithAuth('/api/books');
   }
 
@@ -76,6 +81,62 @@ class ApiService {
     return this.fetchWithAuth(`/api/books/${bookId}`, {
       method: 'DELETE',
     });
+  }
+
+  // Upload-related methods
+  async getUploadUrl(filename: string, contentType: string): Promise<{
+    uploadUrl: string;
+    bookId: string;
+    objectName: string;
+    expiresIn: number;
+  }> {
+    return this.fetchWithAuth('/api/books/upload/url', {
+      method: 'POST',
+      body: JSON.stringify({ filename, contentType }),
+    });
+  }
+
+  async createBook(data: {
+    bookId: string;
+    originalFilename: string;
+    title: string;
+    condensingLevel: 'light' | 'medium' | 'heavy';
+  }): Promise<Book> {
+    return this.fetchWithAuth('/api/books', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+  }
+
+  // User quota methods
+  async canUpload(): Promise<{
+    canUpload: boolean;
+    quotaUsed: number;
+    quotaLimit: number;
+    quotaRemaining: number;
+  }> {
+    return this.fetchWithAuth('/api/user/can-upload');
+  }
+
+  async getUserUsage(): Promise<{
+    dailyQuota: {
+      limit: number;
+      used: number;
+      remaining: number;
+      resetAt: string | null;
+    };
+    books: {
+      total: number;
+      uploaded: number;
+      processing: number;
+      completed: number;
+      failed: number;
+    };
+    costs: {
+      totalApiCost: number;
+    };
+  }> {
+    return this.fetchWithAuth('/api/user/usage');
   }
 }
 
@@ -103,7 +164,10 @@ export const useCurrentUser = () => {
 export const useBooks = () => {
   return useQuery({
     queryKey: ['books'],
-    queryFn: () => apiService.getBooks(),
+    queryFn: async () => {
+      const response = await apiService.getBooks();
+      return response.books;
+    },
     retry: 1,
     staleTime: 2 * 60 * 1000, // 2 minutes
   });
