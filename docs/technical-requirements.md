@@ -1,4 +1,5 @@
 # Bookomol - PDF Book Condensing Telegram Bot
+
 ## Technical Requirements Document
 
 ### 1. Introduction
@@ -8,16 +9,18 @@ This document outlines the technical requirements, specifications, and implement
 ### 2. System Requirements
 
 #### 2.1 Runtime Environment
+
 - **Node.js**: v20.x LTS
 - **TypeScript**: v5.x
 - **Operating System**: Amazon Linux 2 (Lambda runtime)
-- **Memory Requirements**: 
+- **Memory Requirements**:
   - Bot Handler: 512MB
   - Chapter Splitter: 3GB
   - Chapter Processor: 1GB
   - Book Assembler: 2GB
 
 #### 2.2 Development Environment
+
 - **Docker**: v24.x
 - **Docker Compose**: v2.x
 - **PostgreSQL**: v15.x
@@ -29,6 +32,7 @@ This document outlines the technical requirements, specifications, and implement
 #### 3.1 Telegram Bot Webhook API
 
 ##### 3.1.1 Webhook Endpoint
+
 ```typescript
 POST /webhook/{bot-token}
 
@@ -41,6 +45,7 @@ Response: 200 OK | 400 Bad Request
 ```
 
 ##### 3.1.2 Telegram Update Types
+
 ```typescript
 interface TelegramUpdate {
   update_id: number;
@@ -61,6 +66,7 @@ interface Message {
 #### 3.2 Internal Lambda APIs
 
 ##### 3.2.1 S3 Event Handler
+
 ```typescript
 interface S3EventRecord {
   eventVersion: string;
@@ -80,6 +86,7 @@ interface S3EventRecord {
 ```
 
 ##### 3.2.2 SQS Message Format
+
 ```typescript
 interface ProcessingStatusMessage {
   jobId: string;
@@ -102,6 +109,7 @@ interface ProcessingStatusMessage {
 #### 3.3 Google Gemini API Integration
 
 ##### 3.3.1 AI SDK Configuration
+
 ```typescript
 interface GeminiConfig {
   apiKey: string;
@@ -113,6 +121,7 @@ interface GeminiConfig {
 ```
 
 ##### 3.3.2 Chapter Analysis Request
+
 ```typescript
 interface ChapterAnalysisRequest {
   content: string;
@@ -133,6 +142,7 @@ interface ChapterAnalysisResponse {
 ```
 
 ##### 3.3.3 Content Condensation Request
+
 ```typescript
 interface CondensationRequest {
   chapterContent: string;
@@ -154,80 +164,15 @@ interface CondensationResponse {
 
 ### 4. Data Specifications
 
-#### 4.1 Database Schema
+For detailed database schema, migration plans, and implementation details, please refer to:
 
-##### 4.1.1 SQL Migrations
-```sql
--- Version: 001_initial_schema.sql
-CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+- **[Database Migration Plan](./database-migration-plan.md)** - Outlines the Sequelize setup with integer IDs, camelCase columns, and TypeScript validations
+- **[Database Implementation Details](./database-implementation-details.md)** - Contains technical choices, model examples with decorators, and configuration structure
 
-CREATE TYPE job_status AS ENUM (
-  'pending',
-  'splitting', 
-  'processing',
-  'assembling',
-  'completed',
-  'failed'
-);
+#### 4.1 S3 Storage Specifications
 
-CREATE TYPE condensation_level AS ENUM (
-  'brief',
-  'standard', 
-  'comprehensive'
-);
+##### 4.1.1 Bucket Configuration
 
--- Users table with indexes
-CREATE TABLE users (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  telegram_id BIGINT UNIQUE NOT NULL,
-  username VARCHAR(255),
-  first_name VARCHAR(255),
-  last_name VARCHAR(255),
-  language_code VARCHAR(10) DEFAULT 'en',
-  monthly_quota INTEGER DEFAULT 10,
-  is_premium BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_users_telegram_id ON users(telegram_id);
-CREATE INDEX idx_users_created_at ON users(created_at);
-```
-
-##### 4.1.2 Data Models (TypeScript)
-```typescript
-// User entity
-@Entity('users')
-export class User extends BaseEntity {
-  @PrimaryGeneratedColumn('uuid')
-  id: string;
-
-  @Column({ type: 'bigint', unique: true })
-  telegramId: number;
-
-  @Column({ nullable: true })
-  username?: string;
-
-  @Column({ default: 10 })
-  monthlyQuota: number;
-
-  @Column({ default: false })
-  isPremium: boolean;
-
-  @CreateDateColumn()
-  createdAt: Date;
-
-  @UpdateDateColumn()
-  updatedAt: Date;
-
-  @OneToMany(() => Book, book => book.user)
-  books: Book[];
-}
-```
-
-#### 4.2 S3 Storage Specifications
-
-##### 4.2.1 Bucket Configuration
 ```yaml
 BucketName: bookomol-storage-{environment}
 Versioning: Enabled
@@ -240,7 +185,7 @@ LifecycleRules:
     ExpirationInDays: 1
     Prefix: original/
     
-  - Id: DeleteProcessedBooks  
+  - Id: DeleteProcessedBooks
     Status: Enabled
     ExpirationInDays: 7
     Prefix: final/
@@ -252,7 +197,8 @@ CORS:
     MaxAge: 3600
 ```
 
-##### 4.2.2 Object Metadata
+##### 4.1.2 Object Metadata
+
 ```typescript
 interface S3ObjectMetadata {
   userId: string;
@@ -268,6 +214,7 @@ interface S3ObjectMetadata {
 ### 5. Technical Constraints
 
 #### 5.1 Performance Constraints
+
 - **Lambda Cold Start**: < 3 seconds
 - **API Response Time**: < 500ms (p95)
 - **File Upload Speed**: > 1MB/s
@@ -275,6 +222,7 @@ interface S3ObjectMetadata {
 - **Queue Processing Delay**: < 30 seconds
 
 #### 5.2 Resource Constraints
+
 - **Lambda Timeout**: 15 minutes max
 - **Lambda Memory**: 10GB max
 - **S3 Object Size**: 5GB max (multipart)
@@ -282,6 +230,7 @@ interface S3ObjectMetadata {
 - **RDS Connections**: 100 max
 
 #### 5.3 Rate Limits
+
 - **Telegram Bot API**: 30 messages/second
 - **Google Gemini API**: 60 requests/minute
 - **S3 PUT Requests**: 3,500/second
@@ -290,8 +239,8 @@ interface S3ObjectMetadata {
 ### 6. Security Requirements
 
 #### 6.1 Authentication & Authorization
+
 ```typescript
-// Telegram webhook validation
 function validateWebhook(req: Request): boolean {
   const token = req.headers['x-telegram-bot-api-secret-token'];
   return crypto.timingSafeEqual(
@@ -311,14 +260,15 @@ function generatePresignedUrl(key: string, expires: number = 3600): string {
 ```
 
 #### 6.2 Data Encryption
+
 - **In Transit**: TLS 1.2+ required
 - **At Rest**: AES-256 encryption
 - **Secrets**: AWS Secrets Manager
 - **API Keys**: Environment variables in Lambda
 
 #### 6.3 Input Validation
+
 ```typescript
-// Zod schemas for validation
 const FileUploadSchema = z.object({
   filename: z.string().regex(/^[\w\-. ]+\.pdf$/i),
   size: z.number().min(100 * 1024).max(100 * 1024 * 1024),
@@ -334,6 +284,7 @@ const CondensationRequestSchema = z.object({
 ### 7. Integration Requirements
 
 #### 7.1 AWS SDK Configuration
+
 ```typescript
 // AWS SDK v3 configuration
 import { S3Client } from "@aws-sdk/client-s3";
@@ -354,6 +305,7 @@ export const sqsClient = new SQSClient(config);
 ```
 
 #### 7.2 Database Connection
+
 ```typescript
 // Sequelize configuration
 export const sequelizeConfig = {
@@ -374,6 +326,7 @@ export const sequelizeConfig = {
 ```
 
 #### 7.3 Logging Configuration
+
 ```typescript
 // Pino logger setup
 import pino from 'pino';
@@ -399,6 +352,7 @@ export const logger = pino({
 ### 8. Build & Deployment
 
 #### 8.1 Build Configuration
+
 ```typescript
 // vite.config.ts
 import { defineConfig } from 'vite';
@@ -433,67 +387,344 @@ export default defineConfig({
 });
 ```
 
-#### 8.2 Infrastructure as Code (Pulumi)
-```typescript
-// index.ts - Pulumi program
-import * as pulumi from "@pulumi/pulumi";
-import * as aws from "@pulumi/aws";
+#### 8.2 Infrastructure as Code (AWS SAM)
 
-// S3 Bucket
-const bucket = new aws.s3.Bucket("bookomol-storage", {
-  acl: "private",
-  versioning: { enabled: true },
-  serverSideEncryptionConfiguration: {
-    rule: {
-      applyServerSideEncryptionByDefault: {
-        sseAlgorithm: "AES256"
-      }
-    }
-  }
-});
+AWS SAM (Serverless Application Model) provides the simplest way to define and deploy the serverless infrastructure for Bookomol. It uses a declarative YAML template to define all AWS resources.
 
-// Lambda Function
-const botHandler = new aws.lambda.Function("bot-handler", {
-  code: new pulumi.asset.FileArchive("./dist/bot-handler.zip"),
-  runtime: "nodejs20.x",
-  handler: "botHandler.handler",
-  memorySize: 512,
-  timeout: 30,
-  environment: {
-    variables: {
-      TELEGRAM_BOT_TOKEN: config.require("telegramBotToken"),
-      S3_BUCKET: bucket.id,
-      DB_HOST: database.address
-    }
-  }
-});
+##### 8.2.1 SAM Template Structure
+
+```yaml
+# template.yaml - Main SAM template
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Bookomol - PDF Book Condensing Telegram Bot
+
+Globals:
+  Function:
+    Runtime: nodejs20.x
+    Timeout: 30
+    Environment:
+      Variables:
+        NODE_ENV: !Ref Environment
+        S3_BUCKET: !Ref BookomolBucket
+        DB_HOST: !GetAtt BookomolDB.Endpoint.Address
+        DB_PORT: !GetAtt BookomolDB.Endpoint.Port
+        QUEUE_URL: !Ref ProcessingQueue
+
+Parameters:
+  Environment:
+    Type: String
+    Default: dev
+    AllowedValues: [dev, prod]
+  TelegramBotToken:
+    Type: String
+    NoEcho: true
+  GeminiApiKey:
+    Type: String
+    NoEcho: true
+  DatabasePassword:
+    Type: String
+    NoEcho: true
+
+Resources:
+  # S3 Bucket for file storage
+  BookomolBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub 'bookomol-storage-${Environment}'
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      LifecycleConfiguration:
+        Rules:
+          - Id: DeleteOriginalBooks
+            Status: Enabled
+            ExpirationInDays: 1
+            Prefix: original/
+          - Id: DeleteProcessedBooks
+            Status: Enabled
+            ExpirationInDays: 7
+            Prefix: final/
+
+  # Bot Handler Lambda
+  BotHandlerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-bot-handler'
+      CodeUri: ./dist/
+      Handler: handlers/bot.handler
+      MemorySize: 512
+      Environment:
+        Variables:
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+      Events:
+        WebhookApi:
+          Type: Api
+          Properties:
+            Path: /webhook/{token}
+            Method: POST
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BookomolBucket
+        - Statement:
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - sqs:SendMessage
+            Resource: '*'
+
+  # Chapter Splitter Lambda
+  ChapterSplitterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-chapter-splitter'
+      CodeUri: ./dist/
+      Handler: handlers/splitter.handler
+      MemorySize: 3008
+      Timeout: 900
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref BookomolBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: original/
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BookomolBucket
+        - Statement:
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - sqs:SendMessage
+            Resource: '*'
+
+  # Chapter Processor Lambda
+  ChapterProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-chapter-processor'
+      CodeUri: ./dist/
+      Handler: handlers/processor.handler
+      MemorySize: 1024
+      Timeout: 900
+      ReservedConcurrentExecutions: 10
+      Environment:
+        Variables:
+          GEMINI_API_KEY: !Ref GeminiApiKey
+      Events:
+        S3Event:
+          Type: S3
+          Properties:
+            Bucket: !Ref BookomolBucket
+            Events: s3:ObjectCreated:*
+            Filter:
+              S3Key:
+                Rules:
+                  - Name: prefix
+                    Value: chapters/
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BookomolBucket
+        - Statement:
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - sqs:SendMessage
+            Resource: '*'
+
+  # Book Assembler Lambda
+  BookAssemblerFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: !Sub '${AWS::StackName}-book-assembler'
+      CodeUri: ./dist/
+      Handler: handlers/assembler.handler
+      MemorySize: 2048
+      Timeout: 600
+      Environment:
+        Variables:
+          TELEGRAM_BOT_TOKEN: !Ref TelegramBotToken
+      Policies:
+        - S3CrudPolicy:
+            BucketName: !Ref BookomolBucket
+        - Statement:
+          - Effect: Allow
+            Action:
+              - rds:DescribeDBInstances
+              - sqs:SendMessage
+            Resource: '*'
+
+  # SQS Queue for status updates
+  ProcessingQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub '${AWS::StackName}-processing-status'
+      VisibilityTimeout: 300
+      MessageRetentionPeriod: 86400
+
+  # RDS PostgreSQL Database
+  BookomolDB:
+    Type: AWS::RDS::DBInstance
+    Properties:
+      DBInstanceIdentifier: !Sub '${AWS::StackName}-db'
+      DBName: bookomol
+      Engine: postgres
+      EngineVersion: '15'
+      DBInstanceClass: db.t3.micro
+      AllocatedStorage: 20
+      MasterUsername: dbadmin
+      MasterUserPassword: !Ref DatabasePassword
+      VPCSecurityGroups:
+        - !Ref DBSecurityGroup
+      BackupRetentionPeriod: 7
+      PreferredBackupWindow: '03:00-04:00'
+      PreferredMaintenanceWindow: 'sun:04:00-sun:05:00'
+
+  # Security Group for RDS
+  DBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Bookomol RDS
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 5432
+          ToPort: 5432
+          SourceSecurityGroupId: !Ref LambdaSecurityGroup
+
+  # Security Group for Lambda functions
+  LambdaSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for Lambda functions
+
+Outputs:
+  ApiEndpoint:
+    Description: API Gateway endpoint URL
+    Value: !Sub 'https://${ServerlessRestApi}.execute-api.${AWS::Region}.amazonaws.com/${Environment}'
+  BucketName:
+    Description: S3 bucket name
+    Value: !Ref BookomolBucket
+  DatabaseEndpoint:
+    Description: RDS endpoint
+    Value: !GetAtt BookomolDB.Endpoint.Address
 ```
+
+##### 8.2.2 Deployment Commands
+
+```bash
+# Install SAM CLI
+pip install aws-sam-cli
+
+# Build the application
+sam build
+
+# Deploy to AWS (first time - interactive)
+sam deploy --guided
+
+# Subsequent deployments
+sam deploy
+
+# Deploy to specific environment
+sam deploy --parameter-overrides Environment=prod
+```
+
+##### 8.2.3 Environment Configuration
+
+```yaml
+# samconfig.toml - SAM configuration file
+version = 0.1
+[default]
+[default.deploy]
+[default.deploy.parameters]
+stack_name = "bookomol"
+s3_bucket = "aws-sam-cli-managed-default-samclisourcebucket-xxxxx"
+s3_prefix = "bookomol"
+region = "us-east-1"
+capabilities = "CAPABILITY_IAM"
+parameter_overrides = "Environment=dev TelegramBotToken=<token> GeminiApiKey=<key> DatabasePassword=<password>"
+
+[prod]
+[prod.deploy]
+[prod.deploy.parameters]
+stack_name = "bookomol-prod"
+parameter_overrides = "Environment=prod TelegramBotToken=<prod-token> GeminiApiKey=<prod-key> DatabasePassword=<prod-password>"
+```
+
+##### 8.2.4 Local Development
+
+```yaml
+# local-env.json - Local testing configuration
+{
+  "BotHandlerFunction": {
+    "TELEGRAM_BOT_TOKEN": "test-token",
+    "S3_BUCKET": "local-bucket",
+    "DB_HOST": "localhost",
+    "DB_PORT": "5432",
+    "NODE_ENV": "development"
+  }
+}
+```
+
+```bash
+# Start local API
+sam local start-api --env-vars local-env.json
+
+# Invoke specific function
+sam local invoke BotHandlerFunction --event events/test-webhook.json
+```
+
+##### 8.2.5 Key Benefits of SAM
+
+1. **Simplicity**: Single YAML file defines entire infrastructure
+2. **AWS Native**: Built specifically for AWS serverless applications
+3. **Local Testing**: Built-in local development capabilities
+4. **Auto-packaging**: Automatically packages and uploads Lambda code
+5. **CloudFormation Integration**: Leverages AWS CloudFormation under the hood
+6. **Cost Optimization**: Only pay for resources used, no upfront costs
+
+##### 8.2.6 Migration from Pulumi
+
+For teams currently using Pulumi, migration to SAM involves:
+
+1. Export existing resources as CloudFormation template
+2. Convert resource definitions to SAM syntax
+3. Test deployment in development environment
+4. Update CI/CD pipelines to use SAM CLI
+5. Gradually migrate environments
+
+The SAM approach significantly reduces complexity while maintaining all required functionality for the Bookomol serverless application.
 
 ### 9. Quality Assurance
 
 #### 9.1 Code Quality Standards
-- **Code Coverage**: Target 80% minimum
+
 - **Linting**: ESLint with TypeScript rules
 - **Formatting**: Prettier configuration
 - **Type Safety**: Strict TypeScript mode
 
 #### 9.2 Testing Approach
-- Unit tests for business logic
-- Integration tests for AWS services
-- End-to-end tests for critical user flows
-- Performance testing for scalability validation
 
-#### 9.3 Testing Tools
-- **Framework**: Jest for TypeScript
-- **Mocking**: AWS SDK mocks
-- **Load Testing**: k6 or similar tools
-- **CI Integration**: Automated test runs
+Do not write automatic tests on this stage
 
 ### 10. Monitoring & Observability
 
 #### 10.1 CloudWatch Metrics
+
 ```typescript
-// Custom metrics
 const metrics = {
   BookProcessingStarted: new CloudWatch.Metric({
     namespace: 'Bookomol',
@@ -519,6 +750,7 @@ const metrics = {
 ```
 
 #### 10.2 Structured Logging
+
 ```typescript
 // Log formats
 interface LogEntry {
@@ -540,6 +772,7 @@ interface LogEntry {
 ### 11. Error Handling
 
 #### 11.1 Error Codes
+
 ```typescript
 export enum ErrorCode {
   // 4xx Client Errors
@@ -557,26 +790,10 @@ export enum ErrorCode {
 }
 ```
 
-#### 11.2 Error Recovery
-```typescript
-// Retry configuration
-const retryConfig = {
-  maxAttempts: 3,
-  backoffMultiplier: 2,
-  initialDelay: 1000,
-  maxDelay: 10000,
-  retryableErrors: [
-    'ECONNRESET',
-    'ETIMEDOUT',
-    'ServiceUnavailable',
-    'TooManyRequests'
-  ]
-};
-```
-
 ### 12. Development Workflow
 
 #### 12.1 Git Workflow
+
 ```yaml
 # .github/workflows/ci.yml
 name: CI/CD Pipeline
@@ -597,7 +814,6 @@ jobs:
           node-version: '20'
       - run: npm ci
       - run: npm run lint
-      - run: npm run test
       - run: npm run build
       
   deploy:
@@ -612,11 +828,10 @@ jobs:
 ```
 
 #### 12.2 Local Development
+
 ```bash
 # Development commands
 npm run dev         # Start local development
-npm run test:watch  # Run tests in watch mode
 npm run db:migrate  # Run database migrations
 npm run db:seed     # Seed development data
-npm run logs        # Stream local logs
 npm run deploy:dev  # Deploy to dev environment
