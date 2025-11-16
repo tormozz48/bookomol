@@ -1,8 +1,8 @@
-#### 8.2 Infrastructure as Code (AWS SAM)
+# 8.2 Infrastructure as Code (AWS SAM)
 
 AWS SAM (Serverless Application Model) provides the simplest way to define and deploy the serverless infrastructure for Bookomol. It uses a declarative YAML template to define all AWS resources.
 
-##### 8.2.1 SAM Template Structure
+## 8.2.1 SAM Template Structure
 
 ```yaml
 # template.yaml - Main SAM template
@@ -234,7 +234,7 @@ Outputs:
     Value: !GetAtt BookomolDB.Endpoint.Address
 ```
 
-##### 8.2.2 Deployment Commands
+## 8.2.2 Deployment Commands
 
 ```bash
 # Install SAM CLI
@@ -253,7 +253,7 @@ sam deploy
 sam deploy --parameter-overrides Environment=prod
 ```
 
-##### 8.2.3 Environment Configuration
+## 8.2.3 Environment Configuration
 
 ```yaml
 # samconfig.toml - SAM configuration file
@@ -275,7 +275,7 @@ stack_name = "bookomol-prod"
 parameter_overrides = "Environment=prod TelegramBotToken=<prod-token> GeminiApiKey=<prod-key> DatabasePassword=<prod-password>"
 ```
 
-##### 8.2.4 Local Development
+## 8.2.4 Local Development
 
 ```yaml
 # local-env.json - Local testing configuration
@@ -298,7 +298,7 @@ sam local start-api --env-vars local-env.json
 sam local invoke BotHandlerFunction --event events/test-webhook.json
 ```
 
-##### 8.2.5 Key Benefits of SAM
+## 8.2.5 Key Benefits of SAM
 
 1. **Simplicity**: Single YAML file defines entire infrastructure
 2. **AWS Native**: Built specifically for AWS serverless applications
@@ -306,15 +306,3 @@ sam local invoke BotHandlerFunction --event events/test-webhook.json
 4. **Auto-packaging**: Automatically packages and uploads Lambda code
 5. **CloudFormation Integration**: Leverages AWS CloudFormation under the hood
 6. **Cost Optimization**: Only pay for resources used, no upfront costs
-
-##### 8.2.6 Migration from Pulumi
-
-For teams currently using Pulumi, migration to SAM involves:
-
-1. Export existing resources as CloudFormation template
-2. Convert resource definitions to SAM syntax
-3. Test deployment in development environment
-4. Update CI/CD pipelines to use SAM CLI
-5. Gradually migrate environments
-
-The SAM approach significantly reduces complexity while maintaining all required functionality for the Bookomol serverless application.

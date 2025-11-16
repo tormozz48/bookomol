@@ -42,6 +42,7 @@ npx eslint --init
 ```
 
 ### 1.5. Configure Linting (5 minutes)
+
 ```json
 // .eslintrc.json
 {
@@ -73,6 +74,7 @@ npx eslint --init
 ```
 
 Add to package.json scripts:
+
 ```json
 "scripts": {
   "build": "tsc",
@@ -104,6 +106,7 @@ export const handler = webhookCallback(bot, 'aws-lambda');
 ```
 
 ### 3. Create Minimal SAM Template (10 minutes)
+
 ```yaml
 # template.yaml
 AWSTemplateFormatVersion: '2010-09-09'
@@ -141,6 +144,7 @@ Outputs:
 ```
 
 ### 4. Build and Deploy (20 minutes)
+
 ```bash
 # Build TypeScript
 npx tsc
@@ -159,6 +163,7 @@ sam deploy --guided
 ```
 
 ### 5. Set Telegram Webhook (5 minutes)
+
 ```bash
 # Get the webhook URL from CloudFormation outputs
 aws cloudformation describe-stacks \
@@ -172,6 +177,7 @@ curl https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook \
 ```
 
 ### 6. Test Your Bot
+
 - Open Telegram
 - Search for your bot username
 - Send `/start` command
@@ -180,6 +186,7 @@ curl https://api.telegram.org/botYOUR_BOT_TOKEN/setWebhook \
 ## Next Steps
 
 ### Day 2-3: Add More Stubs
+
 ```typescript
 // Add to bot.ts
 bot.command('condense', async (ctx) => {
@@ -192,6 +199,7 @@ bot.on('message:document', async (ctx) => {
 ```
 
 ### Day 4-7: Add S3 Bucket
+
 ```yaml
 # Add to template.yaml Resources
 BookomolBucket:
@@ -201,6 +209,7 @@ BookomolBucket:
 ```
 
 ### Week 2: Add Database
+
 ```yaml
 # Add minimal RDS instance
 BookomolDB:
@@ -220,21 +229,25 @@ BookomolDB:
 - Deployed to AWS
 
 ### Stage 2: File Handling (Week 1)
+
 - Accept PDF uploads
 - Store in S3
 - Return "processing queued" message
 
 ### Stage 3: User Management (Week 2)
+
 - Track users in database
 - Implement quotas
 - Show usage stats
 
 ### Stage 4: Processing Pipeline (Week 3-4)
+
 - Lambda functions created (stubs)
 - S3 triggers configured
 - Status updates sent
 
 ### Stage 5: AI Integration (Week 5-6)
+
 - Gemini API connected
 - Actual processing implemented
 - Results delivered
