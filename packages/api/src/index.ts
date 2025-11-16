@@ -19,7 +19,7 @@ server.get('/', async (request, reply) => {
 
 const start = async () => {
   try {
-    const port = parseInt(process.env.PORT || '3001', 10);
+    const port = parseInt(process.env.PORT || '3010', 10);
     await server.listen({ port, host: '0.0.0.0' });
     console.log(`🚀 API Server running on http://localhost:${port}`);
   } catch (err) {
