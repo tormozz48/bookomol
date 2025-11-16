@@ -1,0 +1,55 @@
+{
+  "name": "bookomol",
+  "version": "0.1.0",
+  "description": "PDF Book Condensing Telegram Bot",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "dev": "nodemon",
+    "lint": "eslint 'src/**/*.ts'",
+    "lint:fix": "eslint 'src/**/*.ts' --fix",
+    "format": "prettier --write 'src/**/*.ts'",
+    "format:check": "prettier --check 'src/**/*.ts'",
+    "deploy:dev": "npm run build && sam deploy --config-env default",
+    "deploy:prod": "npm run build && sam deploy --config-env prod --confirm-changeset"
+  },
+  "keywords": [
+    "telegram-bot",
+    "pdf",
+    "ai",
+    "book-condensing",
+    "serverless",
+    "aws-lambda"
+  ],
+  "author": "",
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@aws-sdk/client-lambda": "^3.932.0",
+    "@aws-sdk/client-s3": "^3.932.0",
+    "@aws-sdk/client-sqs": "^3.932.0",
+    "@grammyjs/types": "^3.22.2",
+    "aws-sdk": "^2.1692.0",
+    "dotenv": "^17.2.3",
+    "grammy": "^1.38.3",
+    "pino": "^10.1.0",
+    "pino-pretty": "^13.1.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.1",
+    "@types/aws-lambda": "^8.10.158",
+    "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.46.4",
+    "@typescript-eslint/parser": "^8.46.4",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "nodemon": "^3.1.11",
+    "prettier": "^3.6.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.9.3",
+    "typescript-eslint": "^8.46.4"
+  }
+}
