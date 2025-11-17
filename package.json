@@ -1,0 +1,52 @@
+{
+  "name": "bookomol",
+  "version": "1.0.0",
+  "description": "A Telegram bot service that condenses technical PDF books using AI",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "sst dev",
+    "build": "sst build",
+    "deploy": "sst deploy",
+    "deploy:prod": "sst deploy --stage production",
+    "remove": "sst remove",
+    "lint": "eslint src --ext .ts",
+    "format": "prettier --write \"src/**/*.ts\"",
+    "type-check": "tsc --noEmit"
+  },
+  "keywords": ["telegram", "bot", "pdf", "ai", "condense", "books"],
+  "author": "Bookomol Team",
+  "license": "MIT",
+  "dependencies": {
+    "sst": "^2.39.0",
+    "grammy": "^1.19.2",
+    "@grammyjs/files": "^1.1.1",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^1.1.1",
+    "@google/generative-ai": "^0.2.1",
+    "aws-sdk": "^2.1490.0",
+    "@aws-sdk/client-s3": "^3.454.0",
+    "@aws-sdk/client-dynamodb": "^3.454.0",
+    "@aws-sdk/client-sqs": "^3.454.0",
+    "@aws-sdk/s3-request-presigner": "^3.454.0",
+    "pino": "^8.16.2",
+    "uuid": "^9.0.1",
+    "zod": "^3.22.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.8.9",
+    "@types/aws-lambda": "^8.10.127",
+    "@types/uuid": "^9.0.6",
+    "@types/pdf-parse": "^1.1.4",
+    "typescript": "^5.2.2",
+    "tsx": "^4.1.2",
+    "eslint": "^8.52.0",
+    "@typescript-eslint/parser": "^6.9.1",
+    "@typescript-eslint/eslint-plugin": "^6.9.1",
+    "prettier": "^3.0.3",
+    "eslint-config-prettier": "^9.0.0",
+    "eslint-plugin-prettier": "^5.0.1"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}
