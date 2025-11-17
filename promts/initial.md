@@ -28,8 +28,7 @@ Storage: AWS S3
 Background Processing: AWS Lambda
 Database: AWS RDS
 Queue: AWS SQS
-
-Let's calculate cost of AWS services for this project.
+I want to use sst framework for AWS organization and deploying of AWS stack [sst](https://sst.dev)
 
 ## Third-party runtime services
 
@@ -37,19 +36,17 @@ Let's calculate cost of AWS services for this project.
 
 * AWS S3
 * AWS Lambda
-* AWS RDS
+* AWS DynamoDB if needed
 * AWS SQS
 
 ### Development environment
 
-It should be easily to run project locally in docker and docker-compose
-
-* Use PostgreSQL database in Docker compose
-* Use Minio as replacement of cloud storage for development
+Use sst framework for AWS organization and deploying of AWS stack [sst](https://sst.dev)
+Use some ability to run project locally if possible with sst framework.
 
 ## Book processing flow
 
-1. User uploads pdf book
+1. User uploads pdf book with telegram bot
 2. Original pdf book is stored in AWS S3 cloud storage
 3. S3 bucket is configured to trigger AWS Lambda function on object creation
 4. AWS Lambda function downloads original pdf book from AWS S3 cloud storage
@@ -74,31 +71,19 @@ It should be easily to run project locally in docker and docker-compose
 3. Setup typescript configuration with recommended settings
 4. Setup eslint configuration with recommended settings
 5. Setup prettier configuration with recommended settings
-6. Setup vite build and recommended vite ecosystem for local development and testing
-
-### CI and CD
-
-1. Setup docker and docker-compose for local development
-2. Setup GitHub Actions for CI/CD pipeline
-3. Setup AWS Lambda for deployment
-4. Setup AWS S3 for storage
-
-I want to have some simple infrastructure-as-code setup for this project. Think about using pulumi or terraform for this.
+6. Setup sst framework with whole stack and components for AWS organization and deploying of AWS stack [sst](https://sst.dev)
 
 ### Development
 
-1. Use telegraf as telegram bot framework
-2. Use aws-sdk for aws services integration
-3. Use vite for build
-4. Use sequelize for database integration
-5. Use sequelize-cli for database migrations
-6. Use sequelize-typescript for typescript integration
-7. Use zod for data validation
-8. Use dotenv for environment variables
-9. Use pino for logging
+1. Use grammY as telegram bot framework
+2. Use vite for typescript build
+3. Use pino for logging
+4. Use sst framework for AWS organization and deploying of AWS stack [sst](https://sst.dev)
 
-Meta information about books should be stored in SQL database
+Meta information about books can be stored in DynamoDB database
 Original pdf book should be stored in AWS S3
 Condensed pdf book should be stored in AWS S3
 
-On this stage it is not required to implement any kind of file processing. We can simply create condensed pdf book as copy of original pdf book.
+On this stage it is not required to implement any kind of book condensing.
+Let's left some stub function for condensing.
+We can simply create condensed pdf book as copy of original pdf book.
