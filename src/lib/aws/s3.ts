@@ -6,103 +6,115 @@ import {
 } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { logger } from "../logger";
+import { bucketNames } from "../../constants";
 
 const client = new S3Client({});
 
 export class S3Service {
-  constructor(private bucketName: string) {}
+  private bucketName = bucketNames.pdfs;
 
-  async uploadFile(key: string, body: Buffer, contentType?: string): Promise<string> {
-    try {
-      const command = new PutObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-        Body: body,
-        ContentType: contentType || "application/octet-stream",
-      });
-
-      await client.send(command);
-      const url = `s3://${this.bucketName}/${key}`;
-      
-      logger.info("File uploaded to S3", { key, url });
-      return url;
-    } catch (error) {
-      logger.error("Failed to upload file to S3", { key, error });
-      throw error;
-    }
+  public async uploadFile(key: string, body: Buffer, contentType?: string): Promise<string> {
+    return this.handlError(
+      key,
+      async () => {
+        await client.send(
+          new PutObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+            Body: body,
+            ContentType: contentType || "application/octet-stream",
+          })
+        );
+        const url = `s3://${this.bucketName}/${key}`;
+        logger.info("File uploaded to S3", { key, url });
+        return url;
+      },
+      "Failed to upload file to S3"
+    );
   }
 
-  async downloadFile(key: string): Promise<Buffer> {
-    try {
-      const command = new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      });
-
-      const response = await client.send(command);
-      const chunks: Uint8Array[] = [];
-      
-      if (response.Body) {
-        const stream = response.Body as any;
-        for await (const chunk of stream) {
-          chunks.push(chunk);
+  public async downloadFile(key: string): Promise<Buffer> {
+    return this.handlError(
+      key,
+      async () => {
+        const response = await client.send(
+          new GetObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+          })
+        );
+        const chunks: Uint8Array[] = [];
+        if (response.Body) {
+          const stream = response.Body as any;
+          for await (const chunk of stream) {
+            chunks.push(chunk);
+          }
         }
-      }
 
-      const buffer = Buffer.concat(chunks);
-      logger.info("File downloaded from S3", { key, size: buffer.length });
-      return buffer;
-    } catch (error) {
-      logger.error("Failed to download file from S3", { key, error });
-      throw error;
-    }
+        const buffer = Buffer.concat(chunks);
+        logger.info("File downloaded from S3", { key, size: buffer.length });
+        return buffer;
+      },
+      "Failed to download file from S3"
+    );
   }
 
-  async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
-    try {
-      const command = new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      });
-
-      const url = await getSignedUrl(client, command, { expiresIn });
-      logger.info("Presigned URL generated", { key, expiresIn });
-      return url;
-    } catch (error) {
-      logger.error("Failed to generate presigned URL", { key, error });
-      throw error;
-    }
+  public async getPresignedUrl(key: string, expiresIn: number = 3600): Promise<string> {
+    return this.handlError(
+      key,
+      async () => {
+        const url = await getSignedUrl(
+          client,
+          new GetObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+          }),
+          { expiresIn }
+        );
+        logger.info("Presigned URL generated", { key, expiresIn });
+        return url;
+      },
+      "Failed to generate presigned URL"
+    );
   }
 
-  async deleteFile(key: string): Promise<void> {
-    try {
-      const command = new DeleteObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      });
-
-      await client.send(command);
-      logger.info("File deleted from S3", { key });
-    } catch (error) {
-      logger.error("Failed to delete file from S3", { key, error });
-      throw error;
-    }
+  public async deleteFile(key: string): Promise<void> {
+    return this.handlError(
+      key,
+      async () => {
+        await client.send(
+          new DeleteObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+          })
+        );
+        logger.info("File deleted from S3", { key });
+      },
+      "Failed to delete file from S3"
+    );
   }
 
-  async fileExists(key: string): Promise<boolean> {
-    try {
-      const command = new GetObjectCommand({
-        Bucket: this.bucketName,
-        Key: key,
-      });
+  public async fileExists(key: string): Promise<boolean> {
+    return this.handlError(
+      key,
+      async () => {
+        await client.send(
+          new GetObjectCommand({
+            Bucket: this.bucketName,
+            Key: key,
+          })
+        );
+        return true;
+      },
+      "Failed to check file existence"
+    );
+  }
 
-      await client.send(command);
-      return true;
-    } catch (error: any) {
-      if (error.name === "NoSuchKey") {
-        return false;
-      }
-      logger.error("Failed to check file existence", { key, error });
+  private handlError<K, T>(key: K, fn: () => Promise<T>, message: string) {
+    try {
+      return fn();
+    } catch (error) {
+      logger.error(message, { error, key });
       throw error;
     }
   }

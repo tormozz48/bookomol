@@ -1,5 +1,5 @@
 import { PDFDocument } from "pdf-lib";
-import * as pdfParse from "pdf-parse";
+import pdfParse from "pdf-parse";
 import { ChapterInfo } from "../../types";
 import { logger } from "../logger";
 

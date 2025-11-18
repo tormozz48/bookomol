@@ -3,39 +3,24 @@ import { BookService } from "../lib/services/book-service";
 import { ProcessingMessage } from "../types";
 import { logger, createLogger } from "../lib/logger";
 
-export const handler: SQSHandler = async (event) => {
+export const handler: SQSHandler = async event => {
   // Get environment variables
-  const {
-    BOOKS_TABLE,
-    SESSIONS_TABLE,
-    PDF_BUCKET,
-    PROCESSING_QUEUE,
-    PROGRESS_QUEUE,
-    GEMINI_API_KEY
-  } = process.env;
+  const { PROCESSING_QUEUE, PROGRESS_QUEUE, GEMINI_API_KEY } = process.env;
 
-  if (!BOOKS_TABLE || !SESSIONS_TABLE || !PDF_BUCKET || 
-      !PROCESSING_QUEUE || !PROGRESS_QUEUE || !GEMINI_API_KEY) {
+  if (!PROCESSING_QUEUE || !PROGRESS_QUEUE || !GEMINI_API_KEY) {
     logger.error("Missing required environment variables");
     throw new Error("Server configuration error");
   }
 
   // Create book service
-  const bookService = new BookService(
-    BOOKS_TABLE,
-    SESSIONS_TABLE,
-    PDF_BUCKET,
-    PROCESSING_QUEUE,
-    PROGRESS_QUEUE,
-    GEMINI_API_KEY
-  );
+  const bookService = new BookService(PROCESSING_QUEUE, PROGRESS_QUEUE, GEMINI_API_KEY);
 
   // Process each SQS record
   for (const record of event.Records) {
     try {
       const message: ProcessingMessage = JSON.parse(record.body);
       const { bookId, action, data } = message;
-      
+
       const processLogger = createLogger({ bookId, action });
       processLogger.info("Processing queue message");
 
@@ -64,10 +49,10 @@ export const handler: SQSHandler = async (event) => {
     } catch (error: any) {
       const bookId = JSON.parse(record.body)?.bookId || "unknown";
       const processLogger = createLogger({ bookId });
-      
+
       processLogger.error("Failed to process queue message", {
         error: error.message,
-        messageBody: record.body
+        messageBody: record.body,
       });
 
       // Mark book as failed if it's a critical error
@@ -75,7 +60,7 @@ export const handler: SQSHandler = async (event) => {
         await bookService.markFailed(bookId, `Processing failed: ${error.message}`);
       } catch (markFailedError: any) {
         processLogger.error("Failed to mark book as failed", {
-          error: markFailedError.message
+          error: markFailedError.message,
         });
       }
 

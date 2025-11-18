@@ -1,8 +1,9 @@
 import { StackContext, Api, Bucket, Table, Queue, Function } from "sst/constructs";
+import { bucketNames, functionNames, queueNames, tableNames } from "../src/constants";
 
 export function BookomolStack({ stack }: StackContext) {
   // DynamoDB Tables
-  const booksTable = new Table(stack, "Books", {
+  const booksTable = new Table(stack, tableNames.books, {
     fields: {
       bookId: "string",
       userId: "string",
@@ -13,7 +14,7 @@ export function BookomolStack({ stack }: StackContext) {
     },
   });
 
-  const sessionsTable = new Table(stack, "Sessions", {
+  const sessionsTable = new Table(stack, tableNames.sessions, {
     fields: {
       sessionId: "string",
       userId: "string",
@@ -23,7 +24,7 @@ export function BookomolStack({ stack }: StackContext) {
   });
 
   // S3 Bucket for PDF storage
-  const pdfBucket = new Bucket(stack, "PdfStorage", {
+  const pdfBucket = new Bucket(stack, bucketNames.pdfs, {
     cors: [
       {
         maxAge: "1 day",
@@ -35,42 +36,39 @@ export function BookomolStack({ stack }: StackContext) {
   });
 
   // SQS Queues
-  const processingQueue = new Queue(stack, "ProcessingQueue", {
+  const processingQueue = new Queue(stack, queueNames.processing, {
     consumer: {
       function: {
+        functionName: functionNames.queueProcessor,
         handler: "src/functions/queue-processor.handler",
         timeout: "15 minutes",
         memorySize: 3008,
         environment: {
-          BOOKS_TABLE: booksTable.tableName,
-          PDF_BUCKET: pdfBucket.bucketName,
           GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
         },
       },
     },
   });
 
-  const progressQueue = new Queue(stack, "ProgressQueue", {
+  const progressQueue = new Queue(stack, queueNames.progress, {
     consumer: {
       function: {
+        functionName: functionNames.progressHandler,
         handler: "src/functions/progress-handler.handler",
         timeout: "1 minute",
         environment: {
           TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "",
-          BOOKS_TABLE: booksTable.tableName,
         },
       },
     },
   });
 
   // Lambda function for PDF processing trigger
-  const pdfProcessor = new Function(stack, "PdfProcessor", {
+  const pdfProcessor = new Function(stack, functionNames.pdfProcessor, {
     handler: "src/functions/pdf-processor.handler",
     timeout: "15 minutes",
     memorySize: 3008,
     environment: {
-      BOOKS_TABLE: booksTable.tableName,
-      PDF_BUCKET: pdfBucket.bucketName,
       PROCESSING_QUEUE: processingQueue.queueUrl,
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
     },
@@ -90,13 +88,11 @@ export function BookomolStack({ stack }: StackContext) {
     routes: {
       "POST /webhook": {
         function: {
+          functionName: functionNames.botHandler,
           handler: "src/functions/bot-handler.handler",
           timeout: "30 seconds",
           environment: {
             TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "",
-            BOOKS_TABLE: booksTable.tableName,
-            SESSIONS_TABLE: sessionsTable.tableName,
-            PDF_BUCKET: pdfBucket.bucketName,
             PROCESSING_QUEUE: processingQueue.queueUrl,
             PROGRESS_QUEUE: progressQueue.queueUrl,
           },

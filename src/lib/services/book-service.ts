@@ -4,7 +4,7 @@ import { DynamoDBService } from "../aws/dynamodb";
 import { S3Service } from "../aws/s3";
 import { SQSService } from "../aws/sqs";
 import { PdfProcessor } from "../pdf/processor";
-import { GeminiClient } from "../ai/gemini-client";
+import { GeminiClient } from "../ai/gemini";
 import { logger, createLogger } from "../logger";
 
 export class BookService {
@@ -14,16 +14,9 @@ export class BookService {
   private pdfProcessor: PdfProcessor;
   private gemini: GeminiClient;
 
-  constructor(
-    booksTable: string,
-    sessionsTable: string,
-    bucketName: string,
-    processingQueueUrl: string,
-    progressQueueUrl: string,
-    geminiApiKey: string
-  ) {
-    this.db = new DynamoDBService(booksTable, sessionsTable);
-    this.s3 = new S3Service(bucketName);
+  constructor(processingQueueUrl: string, progressQueueUrl: string, geminiApiKey: string) {
+    this.db = new DynamoDBService();
+    this.s3 = new S3Service();
     this.sqs = new SQSService(processingQueueUrl, progressQueueUrl);
     this.pdfProcessor = new PdfProcessor();
     this.gemini = new GeminiClient(geminiApiKey);
@@ -61,11 +54,11 @@ export class BookService {
 
     await this.db.createBook(book);
 
-    logger.info("Book created", { 
-      bookId, 
+    logger.info("Book created", {
+      bookId,
       userId: params.userId,
       fileName: params.fileName,
-      condensingLevel: params.condensingLevel
+      condensingLevel: params.condensingLevel,
     });
 
     return book;
@@ -73,7 +66,7 @@ export class BookService {
 
   async uploadOriginalPdf(bookId: string, pdfBuffer: Buffer): Promise<void> {
     const bookLogger = createLogger({ bookId });
-    
+
     try {
       // Validate PDF
       const validation = this.pdfProcessor.validatePdf(pdfBuffer);
@@ -106,9 +99,8 @@ export class BookService {
         s3Key,
         pageCount,
         fileSize: pdfBuffer.length,
-        title: metadata.title
+        title: metadata.title,
       });
-
     } catch (error) {
       bookLogger.error("Failed to upload original PDF", { error });
       await this.markFailed(bookId, `Upload failed: ${error.message}`);
@@ -137,7 +129,6 @@ export class BookService {
       await this.sqs.queueBookProcessing(bookId, book.userId);
 
       bookLogger.info("Book processing started");
-
     } catch (error) {
       bookLogger.error("Failed to start processing", { error });
       await this.markFailed(bookId, `Processing start failed: ${error.message}`);
@@ -155,7 +146,7 @@ export class BookService {
       }
 
       // Download original PDF
-      const s3Key = book.originalUrl.replace(`s3://${this.s3['bucketName']}/`, "");
+      const s3Key = book.originalUrl.replace(`s3://${this.s3["bucketName"]}/`, "");
       const pdfBuffer = await this.s3.downloadFile(s3Key);
 
       // Extract text and identify chapters
@@ -189,9 +180,8 @@ export class BookService {
       bookLogger.info("Chapters identified and queued", {
         totalChapters: chapters.length,
         essentialChapters: essentialChapters.length,
-        skippedChapters: chapters.length - essentialChapters.length
+        skippedChapters: chapters.length - essentialChapters.length,
       });
-
     } catch (error) {
       bookLogger.error("Failed to process chapters", { error });
       await this.markFailed(bookId, `Chapter processing failed: ${error.message}`);
@@ -221,7 +211,7 @@ export class BookService {
       });
 
       // Download original PDF and extract chapter
-      const s3Key = book.originalUrl.replace(`s3://${this.s3['bucketName']}/`, "");
+      const s3Key = book.originalUrl.replace(`s3://${this.s3["bucketName"]}/`, "");
       const pdfBuffer = await this.s3.downloadFile(s3Key);
 
       const chapterPdf = await this.pdfProcessor.extractChapter(pdfBuffer, {
@@ -246,7 +236,11 @@ export class BookService {
 
       // Upload condensed chapter
       const condensedS3Key = `condensed/${bookId}/${chapterId}.pdf`;
-      const condensedUrl = await this.s3.uploadFile(condensedS3Key, condensedPdf, "application/pdf");
+      const condensedUrl = await this.s3.uploadFile(
+        condensedS3Key,
+        condensedPdf,
+        "application/pdf"
+      );
 
       // Update chapter status
       chapter.status = "completed";
@@ -260,28 +254,28 @@ export class BookService {
       bookLogger.info("Chapter condensed successfully", {
         originalSize: chapterText.length,
         condensedSize: condensedText.length,
-        compressionRatio: Math.round((1 - condensedText.length / chapterText.length) * 100)
+        compressionRatio: Math.round((1 - condensedText.length / chapterText.length) * 100),
       });
 
       // Check if all essential chapters are complete
       const essentialChapters = book.chapters.filter(ch => ch.isEssential);
       const completedChapters = essentialChapters.filter(ch => ch.status === "completed");
-      
+
       if (completedChapters.length === essentialChapters.length) {
         // All chapters done, combine them
         await this.sqs.queueChaptersCombining(bookId, book.userId);
       } else {
         // Update progress
-        const progressPercent = 30 + Math.round((completedChapters.length / essentialChapters.length) * 60);
+        const progressPercent =
+          30 + Math.round((completedChapters.length / essentialChapters.length) * 60);
         await this.db.updateBook(bookId, {
           progress: progressPercent,
           currentStep: `Condensed ${completedChapters.length}/${essentialChapters.length} chapters...`,
         });
       }
-
     } catch (error) {
       bookLogger.error("Failed to condense chapter", { error });
-      
+
       // Mark chapter as failed but continue with others
       const book = await this.db.getBook(bookId);
       if (book) {
@@ -309,8 +303,8 @@ export class BookService {
       }
 
       // Get all completed chapters
-      const completedChapters = book.chapters.filter(ch => 
-        ch.status === "completed" && ch.condensedUrl
+      const completedChapters = book.chapters.filter(
+        ch => ch.status === "completed" && ch.condensedUrl
       );
 
       if (completedChapters.length === 0) {
@@ -320,7 +314,7 @@ export class BookService {
       // Download all condensed chapters
       const chapterBuffers: Buffer[] = [];
       for (const chapter of completedChapters) {
-        const s3Key = chapter.condensedUrl!.replace(`s3://${this.s3['bucketName']}/`, "");
+        const s3Key = chapter.condensedUrl!.replace(`s3://${this.s3["bucketName"]}/`, "");
         const buffer = await this.s3.downloadFile(s3Key);
         chapterBuffers.push(buffer);
       }
@@ -362,9 +356,8 @@ export class BookService {
       bookLogger.info("Book processing completed", {
         chaptersProcessed: completedChapters.length,
         finalSize: combinedPdf.length,
-        downloadUrl
+        downloadUrl,
       });
-
     } catch (error) {
       bookLogger.error("Failed to combine chapters", { error });
       await this.markFailed(bookId, `Final assembly failed: ${error.message}`);
