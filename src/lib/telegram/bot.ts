@@ -1,7 +1,7 @@
 import { Bot, Context, SessionFlavor, session } from "grammy";
 import { hydrateFiles } from "@grammyjs/files";
-import { SessionService } from "../services/session-service";
-import { BookService } from "../services/book-service";
+import { SessionService } from "../services/session.service";
+import { BookService } from "../services/book.service";
 import { logger, createLogger } from "../logger";
 
 interface SessionData {

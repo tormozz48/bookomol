@@ -1,5 +1,5 @@
 import { SQSHandler } from "aws-lambda";
-import { BookService } from "../lib/services/book-service";
+import { BookService } from "../lib/services/book.service";
 import { ProcessingMessage } from "../types";
 import { logger, createLogger } from "../lib/logger";
 

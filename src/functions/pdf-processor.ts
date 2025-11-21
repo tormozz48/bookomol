@@ -1,8 +1,8 @@
 import { S3Handler } from "aws-lambda";
-import { BookService } from "../lib/services/book-service";
+import { BookService } from "../lib/services/book.service";
 import { logger, createLogger } from "../lib/logger";
 
-export const handler: S3Handler = async (event) => {
+export const handler: S3Handler = async event => {
   try {
     // Get environment variables
     const {
@@ -11,11 +11,17 @@ export const handler: S3Handler = async (event) => {
       PDF_BUCKET,
       PROCESSING_QUEUE,
       PROGRESS_QUEUE,
-      GEMINI_API_KEY
+      GEMINI_API_KEY,
     } = process.env;
 
-    if (!BOOKS_TABLE || !SESSIONS_TABLE || !PDF_BUCKET || 
-        !PROCESSING_QUEUE || !PROGRESS_QUEUE || !GEMINI_API_KEY) {
+    if (
+      !BOOKS_TABLE ||
+      !SESSIONS_TABLE ||
+      !PDF_BUCKET ||
+      !PROCESSING_QUEUE ||
+      !PROGRESS_QUEUE ||
+      !GEMINI_API_KEY
+    ) {
       logger.error("Missing required environment variables");
       return;
     }
@@ -32,9 +38,9 @@ export const handler: S3Handler = async (event) => {
 
     // Process each S3 record
     for (const record of event.Records) {
-      if (record.eventName?.startsWith('ObjectCreated')) {
+      if (record.eventName?.startsWith("ObjectCreated")) {
         const s3Key = record.s3.object.key;
-        
+
         // Extract book ID from S3 key (assumes format: original/{bookId}.pdf)
         const bookIdMatch = s3Key.match(/original\/(.+)\.pdf$/);
         if (!bookIdMatch) {
@@ -47,14 +53,14 @@ export const handler: S3Handler = async (event) => {
 
         try {
           processLogger.info("Processing PDF upload from S3");
-          
+
           // Start processing the chapters
           await bookService.processChapters(bookId);
-          
+
           processLogger.info("PDF processing initiated successfully");
         } catch (error: any) {
           processLogger.error("Failed to process PDF from S3", { error: error.message });
-          
+
           // Mark book as failed
           await bookService.markFailed(bookId, `S3 processing failed: ${error.message}`);
         }
