@@ -1,17 +1,16 @@
-import { v4 as uuidv4 } from "uuid";
 import { db } from "../aws";
 import { CondensingLevel, Session, SessionState } from "../../types";
-import { logger } from "../logger";
+import { sessionExpiryTime } from "../../constants";
 
-const SESSION_EXPIRY_TIME = 60 * 60 * 1000; // 1 hour
+const getSessionId = (userId: number): string => `session_${userId}`;
 
 export async function getSessionByUserId(userId: number): Promise<Session | null> {
-  const sessionId = `session_${userId}`;
+  const sessionId = getSessionId(userId);
   return db.getSession(sessionId);
 }
 
 export async function createSession(userId: number, chatId: number): Promise<Session> {
-  const sessionId = `session_${userId}`;
+  const sessionId = getSessionId(userId);
   const now = new Date();
 
   const session: Session = {
@@ -20,7 +19,7 @@ export async function createSession(userId: number, chatId: number): Promise<Ses
     chatId: chatId.toString(),
     state: SessionState.awaitingLevel,
     createdAt: now.toISOString(),
-    expiresAt: getSessionExpiryTime(),
+    expiresAt: getSessionExpiryTime().toString(),
   };
 
   await db.createSession(session);
@@ -32,7 +31,6 @@ export async function updateSession(userId: number, updates: Partial<Session>): 
   if (!session) {
     throw new Error(`No active session found for user ${userId}`);
   }
-
   await db.updateSession(session.sessionId, updates);
 }
 
@@ -41,7 +39,6 @@ export async function deleteSession(userId: number): Promise<void> {
   if (!session) {
     return;
   }
-
   await db.deleteSession(session.sessionId);
 }
 
@@ -52,15 +49,15 @@ export async function setCondensingLevel(userId: number, level: CondensingLevel)
   });
 }
 
-  async setProcessingState(userId: number, bookId: string): Promise<void> {
-    await this.updateSession(userId, {
-      bookId,
-      state: "processing",
-    });
-  }
+export async function setProcessingState(userId: number, bookId: string): Promise<void> {
+  await updateSession(userId, {
+    bookId,
+    state: SessionState.processing,
+  });
+}
 
 export async function getUserActiveSession(userId: number): Promise<Session | null> {
-  const session = await getSession(userId);
+  const session = await getSessionByUserId(userId);
   if (!session) {
     return null;
   }
@@ -68,14 +65,13 @@ export async function getUserActiveSession(userId: number): Promise<Session | nu
   // Check if session is still valid (not expired)
   const expiresAt = parseInt(session.expiresAt) * 1000; // Convert back to milliseconds
   if (Date.now() > expiresAt) {
-    await this.deleteSession(userId);
+    await deleteSession(userId);
     return null;
   }
-
   return session;
 }
 
 function getSessionExpiryTime(): number {
   const now = new Date();
-  return Math.floor(new Date(now.getTime() + SESSION_EXPIRY_TIME).getTime() / 1000);
+  return Math.floor(new Date(now.getTime() + sessionExpiryTime).getTime() / 1000);
 }

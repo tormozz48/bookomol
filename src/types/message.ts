@@ -5,11 +5,11 @@ export enum MessageAction {
   combineChapters = "combine_chapters",
 }
 
-export interface ProcessingMessage<T extends MessageAction> {
+export interface ProcessingMessage {
   readonly bookId: string;
   readonly userId: string;
-  action: T;
-  data: T extends MessageAction.extractChapters ? { chapterId: string } : {};
+  action: MessageAction;
+  data: Record<string, any>;
 }
 
 export interface ProgressMessage {

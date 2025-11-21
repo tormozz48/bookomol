@@ -18,3 +18,10 @@ export const functionNames = {
   progressHandler: "ProgressHandler",
   botHandler: "BotHandler",
 } as const;
+
+export const queueEnvironmentNames = {
+  processing: "PROCESSING_QUEUE",
+  progress: "PROGRESS_QUEUE",
+} as const;
+
+export const sessionExpiryTime = 60 * 60 * 1000; // 1 hour

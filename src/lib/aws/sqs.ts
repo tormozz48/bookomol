@@ -1,84 +1,78 @@
 import { SQSClient, SendMessageCommand } from "@aws-sdk/client-sqs";
 import { MessageAction, ProcessingMessage, ProgressMessage } from "../../types";
 import { logger } from "../logger";
+import { getRequiredEnv } from "../config";
+import { queueEnvironmentNames } from "../../constants";
 
 const client = new SQSClient({});
 
-export class SQSService {
-  constructor(
-    private processingQueueUrl: string,
-    private progressQueueUrl: string
-  ) {}
+export async function queueBookProcessing(bookId: string, userId: string): Promise<void> {
+  await sendProcessingMessage({
+    action: MessageAction.processBook,
+    bookId,
+    userId,
+    data: {},
+  });
+}
 
-  public async queueBookProcessing(bookId: string, userId: string): Promise<void> {
-    await this.sendProcessingMessage<MessageAction.processBook>({
-      bookId,
-      userId,
-      action: MessageAction.processBook,
-      data: {},
-    });
-  }
+export async function queueChapterCondensing(
+  bookId: string,
+  userId: string,
+  chapterId: string
+): Promise<void> {
+  await sendProcessingMessage({
+    action: MessageAction.condenseChapter,
+    bookId,
+    userId,
+    data: { chapterId },
+  });
+}
 
-  public async queueChapterCondensing(
-    bookId: string,
-    userId: string,
-    chapterId: string
-  ): Promise<void> {
-    await this.sendProcessingMessage<MessageAction.condenseChapter>({
-      bookId,
-      userId,
-      action: MessageAction.condenseChapter,
-      data: { chapterId },
-    });
-  }
+export async function queueChaptersCombining(bookId: string, userId: string): Promise<void> {
+  await sendProcessingMessage({
+    action: MessageAction.combineChapters,
+    bookId,
+    userId,
+    data: {},
+  });
+}
 
-  public async queueChaptersCombining(bookId: string, userId: string): Promise<void> {
-    await this.sendProcessingMessage<MessageAction.combineChapters>({
-      bookId,
-      userId,
-      action: MessageAction.combineChapters,
-      data: {},
-    });
-  }
+export async function sendProgressMessage(message: ProgressMessage): Promise<void> {
+  await sendMessage(getRequiredEnv(queueEnvironmentNames.progress), message, [
+    "bookId",
+    "chatId",
+    "progress",
+  ]);
+}
 
-  public async sendProgressMessage(message: ProgressMessage): Promise<void> {
-    await this.sendMessage(this.progressQueueUrl, message, ["bookId", "chatId", "progress"]);
-  }
+async function sendProcessingMessage(message: ProcessingMessage): Promise<void> {
+  await sendMessage(getRequiredEnv(queueEnvironmentNames.processing), message, [
+    "bookId",
+    "action",
+  ]);
+}
 
-  private async sendProcessingMessage<T extends MessageAction>(
-    message: ProcessingMessage<T>
-  ): Promise<void> {
-    await this.sendMessage(this.processingQueueUrl, message, ["bookId", "action"]);
-  }
-
-  private async sendMessage<T, K extends keyof T>(
-    queueUrl: string,
-    message: T,
-    attributes?: K[]
-  ): Promise<void> {
-    try {
-      await client.send(
-        new SendMessageCommand({
-          QueueUrl: queueUrl,
-          MessageBody: JSON.stringify(message),
-          MessageAttributes: attributes
-            ? attributes.reduce(
-                (acc, key) => {
-                  acc[key] = {
-                    DataType: "String",
-                    StringValue: `${message[key]}`,
-                  };
-                  return acc;
-                },
-                {} as Record<K, { DataType: string; StringValue: string }>
-              )
-            : undefined,
-        })
-      );
-      logger.info("Message sent", { queueUrl, message });
-    } catch (error) {
-      logger.error("Failed to send message", { message, error });
-      throw error;
-    }
-  }
+async function sendMessage<T, K extends keyof T>(
+  queueUrl: string,
+  message: T,
+  attributes?: K[]
+): Promise<void> {
+  await client.send(
+    new SendMessageCommand({
+      QueueUrl: queueUrl,
+      MessageBody: JSON.stringify(message),
+      MessageAttributes: attributes
+        ? attributes.reduce(
+            (acc, key) => {
+              acc[key] = {
+                DataType: "String",
+                StringValue: `${message[key]}`,
+              };
+              return acc;
+            },
+            {} as Record<K, { DataType: string; StringValue: string }>
+          )
+        : undefined,
+    })
+  );
 }

@@ -1,5 +1,11 @@
 import { StackContext, Api, Bucket, Table, Queue, Function } from "sst/constructs";
-import { bucketNames, functionNames, queueNames, tableNames } from "../src/constants";
+import {
+  bucketNames,
+  functionNames,
+  queueEnvironmentNames,
+  queueNames,
+  tableNames,
+} from "../src/constants";
 
 export function BookomolStack({ stack }: StackContext) {
   // DynamoDB Tables
@@ -65,11 +71,12 @@ export function BookomolStack({ stack }: StackContext) {
 
   // Lambda function for PDF processing trigger
   const pdfProcessor = new Function(stack, functionNames.pdfProcessor, {
+    functionName: functionNames.pdfProcessor,
     handler: "src/functions/pdf-processor.handler",
     timeout: "15 minutes",
     memorySize: 3008,
     environment: {
-      PROCESSING_QUEUE: processingQueue.queueUrl,
+      [queueEnvironmentNames.processing]: processingQueue.queueUrl,
       GEMINI_API_KEY: process.env.GEMINI_API_KEY || "",
     },
   });
@@ -93,8 +100,8 @@ export function BookomolStack({ stack }: StackContext) {
           timeout: "30 seconds",
           environment: {
             TELEGRAM_BOT_TOKEN: process.env.TELEGRAM_BOT_TOKEN || "",
-            PROCESSING_QUEUE: processingQueue.queueUrl,
-            PROGRESS_QUEUE: progressQueue.queueUrl,
+            [queueEnvironmentNames.processing]: processingQueue.queueUrl,
+            [queueEnvironmentNames.progress]: progressQueue.queueUrl,
           },
         },
       },
@@ -113,5 +120,7 @@ export function BookomolStack({ stack }: StackContext) {
     BooksTableName: booksTable.tableName,
     SessionsTableName: sessionsTable.tableName,
     PdfBucketName: pdfBucket.bucketName,
+    ProcessingQueueUrl: processingQueue.queueUrl,
+    ProgressQueueUrl: progressQueue.queueUrl,
   });
 }
